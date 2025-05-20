@@ -14,6 +14,18 @@ const questionSchema = new mongoose.Schema(
         image: {
             type: String, // URL to image if needed
         },
+        imageData: {
+            type: String, // Base64 encoded image data
+            validate: {
+                validator: function (v) {
+                    // Only validate if value exists
+                    if (!v) return true;
+                    // Check if it's a valid base64 string (starts with data:image)
+                    return v.startsWith('data:image');
+                },
+                message: props => 'Image data must be a valid base64 encoded image string'
+            }
+        },
         options: [
             {
                 text: {

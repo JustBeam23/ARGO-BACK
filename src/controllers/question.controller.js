@@ -40,6 +40,19 @@ exports.getQuestionById = async (req, res) => {
 // Create a new question
 exports.createQuestion = async (req, res) => {
     try {
+        // Handle image validation
+        if (req.body.imageData) {
+            // Check if image is not too large (limit to ~2MB base64 string)
+            if (req.body.imageData.length > 2800000) { // ~2MB in base64
+                return res.status(400).json({ message: 'Image size too large. Please use an image smaller than 2MB.' });
+            }
+
+            // Validate image format
+            if (!req.body.imageData.startsWith('data:image/')) {
+                return res.status(400).json({ message: 'Invalid image format. Please provide a valid base64 encoded image.' });
+            }
+        }
+
         const newQuestion = new Question(req.body);
         const savedQuestion = await newQuestion.save();
         res.status(201).json(savedQuestion);
@@ -57,12 +70,28 @@ exports.createManyQuestions = async (req, res) => {
             return res.status(400).json({ message: 'Invalid request data' });
         }
 
-        const questionsWithQuizId = questions.map(question => ({
-            ...question,
-            quizId
-        }));
+        // Process each question and validate images
+        const processedQuestions = questions.map(question => {
+            const newQuestion = {
+                ...question,
+                quizId
+            };
 
-        const savedQuestions = await Question.insertMany(questionsWithQuizId);
+            // Validate image data if present
+            if (newQuestion.imageData) {
+                if (newQuestion.imageData.length > 2800000) { // ~2MB in base64
+                    throw new Error(`Image for question "${newQuestion.questionText.substring(0, 30)}..." is too large.`);
+                }
+
+                if (!newQuestion.imageData.startsWith('data:image/')) {
+                    throw new Error(`Invalid image format for question "${newQuestion.questionText.substring(0, 30)}..."`);
+                }
+            }
+
+            return newQuestion;
+        });
+
+        const savedQuestions = await Question.insertMany(processedQuestions);
         res.status(201).json(savedQuestions);
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -73,6 +102,20 @@ exports.createManyQuestions = async (req, res) => {
 exports.updateQuestion = async (req, res) => {
     try {
         const { id } = req.params;
+
+        // Handle image validation
+        if (req.body.imageData) {
+            // Check if image is not too large (limit to ~2MB base64 string)
+            if (req.body.imageData.length > 2800000) { // ~2MB in base64
+                return res.status(400).json({ message: 'Image size too large. Please use an image smaller than 2MB.' });
+            }
+
+            // Validate image format
+            if (!req.body.imageData.startsWith('data:image/')) {
+                return res.status(400).json({ message: 'Invalid image format. Please provide a valid base64 encoded image.' });
+            }
+        }
+
         const updatedQuestion = await Question.findByIdAndUpdate(
             id,
             req.body,
